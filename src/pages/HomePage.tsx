@@ -1,4 +1,7 @@
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
+
+const SETTINGS_URL = "https://functions.poehali.dev/d506e2e5-21d5-4ce3-8fc7-51fd76ebdbf7";
 
 type Page = "home" | "albums";
 
@@ -34,13 +37,77 @@ const FEATURED_ALBUMS = [
 
 const GENRES = ["Gothic"];
 
+interface Settings {
+  hero_title_line1: string;
+  hero_title_line2: string;
+  hero_title_line3: string;
+  hero_subtitle: string;
+  hero_badge: string;
+  cta_title: string;
+  cta_subtitle: string;
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  hero_title_line1: "СЛУШАЙ",
+  hero_title_line2: "ПО-",
+  hero_title_line3: "ДРУГОМУ",
+  hero_subtitle: "Откройте для себя альбомы, которые меняют восприятие звука. Музыка, отобранная для тех, кто ценит каждую ноту.",
+  hero_badge: "Новые релизы 2024",
+  cta_title: "ГОТОВ ОТКРЫТЬ НОВУЮ МУЗЫКУ?",
+  cta_subtitle: "Тысячи альбомов по всем жанрам — от классики до самых смелых экспериментов",
+};
+
 interface HomePageProps {
   onNavigate: (page: Page) => void;
 }
 
 export default function HomePage({ onNavigate }: HomePageProps) {
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Settings>(DEFAULT_SETTINGS);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(SETTINGS_URL)
+      .then((r) => r.json())
+      .then((data) => {
+        const merged = { ...DEFAULT_SETTINGS, ...data };
+        setSettings(merged);
+        setDraft(merged);
+      })
+      .catch(() => {});
+  }, []);
+
+  function openEdit() {
+    setDraft({ ...settings });
+    setEditing(true);
+  }
+
+  async function saveSettings() {
+    setSaving(true);
+    await fetch(SETTINGS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(draft),
+    });
+    setSettings({ ...draft });
+    setSaving(false);
+    setEditing(false);
+  }
+
   return (
     <div className="overflow-hidden">
+      {/* Кнопка редактирования */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={openEdit}
+          className="flex items-center gap-2 glass neon-border text-primary text-sm font-medium px-4 py-2.5 rounded-full transition-all hover:shadow-[0_0_16px_hsla(270,80%,65%,0.3)] hover:bg-primary/10"
+        >
+          <Icon name="Pencil" size={14} />
+          Редактировать текст
+        </button>
+      </div>
+
       {/* Hero */}
       <section className="relative min-h-[90vh] flex items-center">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -56,20 +123,19 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             <div className="opacity-0 animate-fade-in-up" style={{ animationFillMode: 'forwards' }}>
               <span className="inline-flex items-center gap-2 text-accent text-xs font-medium tracking-[0.2em] uppercase border border-accent/20 bg-accent/5 px-3 py-1.5 rounded-full mb-6">
                 <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                Новые релизы 2024
+                {settings.hero_badge}
               </span>
               <h1 className="font-heading text-6xl md:text-8xl font-bold leading-[0.9] tracking-wide">
-                <span className="text-white">СЛУШАЙ</span>
+                <span className="text-white">{settings.hero_title_line1}</span>
                 <br />
-                <span className="neon-text-purple">ПО-</span>
+                <span className="neon-text-purple">{settings.hero_title_line2}</span>
                 <br />
-                <span className="text-white/30">ДРУГОМУ</span>
+                <span className="text-white/30">{settings.hero_title_line3}</span>
               </h1>
             </div>
 
             <p className="text-white/50 text-lg font-light leading-relaxed opacity-0 animate-fade-in-up delay-200" style={{ animationFillMode: 'forwards' }}>
-              Откройте для себя альбомы, которые меняют восприятие звука.
-              Музыка, отобранная для тех, кто ценит каждую ноту.
+              {settings.hero_subtitle}
             </p>
 
             <div className="flex items-center gap-4 opacity-0 animate-fade-in-up delay-300" style={{ animationFillMode: 'forwards' }}>
@@ -96,7 +162,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             </div>
           </div>
 
-          {/* Hero визуализация */}
           <div className="relative hidden md:block opacity-0 animate-fade-in-up delay-200" style={{ animationFillMode: 'forwards' }}>
             <div className="relative w-full aspect-square max-w-md mx-auto">
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/20 to-accent/10 border border-white/5 overflow-hidden">
@@ -107,7 +172,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
               </div>
-
               <div className="absolute -bottom-4 -left-8 glass rounded-2xl p-4 neon-border">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl overflow-hidden">
@@ -122,7 +186,6 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                   </div>
                 </div>
               </div>
-
               <div className="absolute -top-4 -right-4 glass rounded-2xl p-3 border border-white/5">
                 <div className="text-center">
                   <div className="neon-text-cyan font-heading text-xl font-bold">#1</div>
@@ -140,10 +203,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
             <span className="text-white/30 text-xs tracking-widest uppercase shrink-0 mr-2">Жанры</span>
             {GENRES.map((genre) => (
-              <button
-                key={genre}
-                className="genre-pill shrink-0 text-white/50 border border-white/10 text-xs font-medium px-5 py-2 rounded-full"
-              >
+              <button key={genre} className="genre-pill shrink-0 text-white/50 border border-white/10 text-xs font-medium px-5 py-2 rounded-full">
                 {genre}
               </button>
             ))}
@@ -159,15 +219,11 @@ export default function HomePage({ onNavigate }: HomePageProps) {
               <p className="text-accent text-xs tracking-[0.2em] uppercase mb-2">Рекомендуем</p>
               <h2 className="font-heading text-4xl font-bold text-white">ГОРЯЧИЕ РЕЛИЗЫ</h2>
             </div>
-            <button
-              onClick={() => onNavigate("albums")}
-              className="text-white/40 hover:text-white text-sm flex items-center gap-1 transition-colors"
-            >
+            <button onClick={() => onNavigate("albums")} className="text-white/40 hover:text-white text-sm flex items-center gap-1 transition-colors">
               Все альбомы
               <Icon name="ArrowRight" size={14} />
             </button>
           </div>
-
           <div className="grid md:grid-cols-3 gap-6">
             {FEATURED_ALBUMS.map((album, i) => (
               <div
@@ -176,11 +232,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
                 style={{ animationDelay: `${i * 0.1}s`, animationFillMode: 'forwards' }}
               >
                 <div className="aspect-square overflow-hidden">
-                  <img
-                    src={album.cover}
-                    alt={album.title}
-                    className="album-img w-full h-full object-cover transition-transform duration-500"
-                  />
+                  <img src={album.cover} alt={album.title} className="album-img w-full h-full object-cover transition-transform duration-500" />
                 </div>
                 <div className={`album-overlay absolute inset-0 bg-gradient-to-t ${album.color} opacity-0 transition-opacity duration-300 flex items-end p-5`}>
                   <div className="w-full flex items-center justify-between">
@@ -211,10 +263,8 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
             <div className="relative z-10">
               <Icon name="Headphones" size={48} className="text-primary mx-auto mb-6 opacity-80" />
-              <h2 className="font-heading text-5xl font-bold text-white mb-4">ГОТОВ ОТКРЫТЬ<br/>НОВУЮ МУЗЫКУ?</h2>
-              <p className="text-white/40 mb-8 max-w-md mx-auto">
-                Тысячи альбомов по всем жанрам — от классики до самых смелых экспериментов
-              </p>
+              <h2 className="font-heading text-5xl font-bold text-white mb-4 whitespace-pre-line">{settings.cta_title}</h2>
+              <p className="text-white/40 mb-8 max-w-md mx-auto">{settings.cta_subtitle}</p>
               <button
                 onClick={() => onNavigate("albums")}
                 className="inline-flex items-center gap-2 bg-primary hover:bg-primary/80 text-white font-medium px-10 py-4 rounded-full transition-all hover:shadow-[0_0_30px_hsla(270,80%,65%,0.4)]"
@@ -226,6 +276,107 @@ export default function HomePage({ onNavigate }: HomePageProps) {
           </div>
         </div>
       </section>
+
+      {/* Модалка редактирования */}
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setEditing(false)} />
+          <div className="relative glass neon-border rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-fade-in-up" style={{ animationFillMode: "forwards" }}>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-heading text-2xl font-bold text-white">РЕДАКТОР ТЕКСТА</h2>
+                <button onClick={() => setEditing(false)} className="text-white/30 hover:text-white transition-colors">
+                  <Icon name="X" size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="text-white/40 text-xs tracking-widest uppercase mb-1.5 block">Бейдж (над заголовком)</label>
+                  <input
+                    value={draft.hero_badge}
+                    onChange={(e) => setDraft({ ...draft, hero_badge: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-white/40 text-xs tracking-widest uppercase mb-1.5 block">Заголовок — строка 1</label>
+                  <input
+                    value={draft.hero_title_line1}
+                    onChange={(e) => setDraft({ ...draft, hero_title_line1: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-all font-heading tracking-wide"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-white/40 text-xs tracking-widest uppercase mb-1.5 block">Заголовок — строка 2 (фиолетовая)</label>
+                  <input
+                    value={draft.hero_title_line2}
+                    onChange={(e) => setDraft({ ...draft, hero_title_line2: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 text-primary px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-all font-heading tracking-wide"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-white/40 text-xs tracking-widest uppercase mb-1.5 block">Заголовок — строка 3 (приглушённая)</label>
+                  <input
+                    value={draft.hero_title_line3}
+                    onChange={(e) => setDraft({ ...draft, hero_title_line3: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 text-white/40 px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-all font-heading tracking-wide"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-white/40 text-xs tracking-widest uppercase mb-1.5 block">Подзаголовок</label>
+                  <textarea
+                    value={draft.hero_subtitle}
+                    onChange={(e) => setDraft({ ...draft, hero_subtitle: e.target.value })}
+                    rows={3}
+                    className="w-full bg-white/5 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-all resize-none"
+                  />
+                </div>
+
+                <div className="border-t border-white/8 pt-4">
+                  <label className="text-white/40 text-xs tracking-widest uppercase mb-1.5 block">Заголовок CTA-блока</label>
+                  <input
+                    value={draft.cta_title}
+                    onChange={(e) => setDraft({ ...draft, cta_title: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-all font-heading tracking-wide"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-white/40 text-xs tracking-widest uppercase mb-1.5 block">Текст CTA-блока</label>
+                  <textarea
+                    value={draft.cta_subtitle}
+                    onChange={(e) => setDraft({ ...draft, cta_subtitle: e.target.value })}
+                    rows={2}
+                    className="w-full bg-white/5 border border-white/10 text-white px-4 py-2.5 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-all resize-none"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setEditing(false)}
+                  className="flex-1 border border-white/10 text-white/50 hover:text-white py-3 rounded-xl text-sm transition-all"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={saveSettings}
+                  disabled={saving}
+                  className="flex-1 bg-primary hover:bg-primary/80 disabled:opacity-50 text-white font-medium py-3 rounded-xl text-sm transition-all flex items-center justify-center gap-2 hover:shadow-[0_0_20px_hsla(270,80%,65%,0.4)]"
+                >
+                  {saving ? <Icon name="Loader2" size={14} className="animate-spin" /> : <Icon name="Check" size={14} />}
+                  {saving ? "Сохраняю..." : "Сохранить"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
