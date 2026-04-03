@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "GET albums list",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"albums": []},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
