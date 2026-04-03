@@ -3,8 +3,8 @@ import Icon from "@/components/ui/icon";
 
 const ALBUMS_URL = "https://functions.poehali.dev/ce59cbd1-540a-49c7-a8da-cb03288d76f1";
 
-const GENRES_FILTER = ["Все", "Electronic", "Synthwave", "Jazz", "Ambient", "Hip-Hop", "Rock", "Classical", "Gothic"];
-const GENRES_FORM = ["Electronic", "Synthwave", "Jazz", "Ambient", "Hip-Hop", "Rock", "Classical", "Gothic"];
+const GENRES_FILTER = ["Все", "Gothic"];
+const GENRES_FORM = ["Gothic"];
 
 const PLACEHOLDER_COVERS = [
   "https://cdn.poehali.dev/projects/b6d26f0e-3a2b-4676-928d-3cecb0649a84/files/9aeecbde-f588-471f-9fc1-c5e6012a8c11.jpg",

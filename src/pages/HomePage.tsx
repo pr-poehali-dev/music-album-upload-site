@@ -32,7 +32,7 @@ const FEATURED_ALBUMS = [
   },
 ];
 
-const GENRES = ["Electronic", "Synthwave", "Jazz", "Ambient", "Hip-Hop", "Rock", "Gothic"];
+const GENRES = ["Gothic"];
 
 interface HomePageProps {
   onNavigate: (page: Page) => void;
