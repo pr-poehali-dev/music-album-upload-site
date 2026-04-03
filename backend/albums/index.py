@@ -1,5 +1,9 @@
 """
-API для управления альбомами: получение списка и загрузка нового альбома с обложкой в S3.
+API для управления альбомами и треками:
+GET /            — список альбомов
+POST /           — создать альбом (с обложкой)
+GET /?album_id=N — треки альбома
+POST /tracks     — добавить трек в альбом
 """
 
 import json
@@ -27,11 +31,19 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
     method = event.get("httpMethod", "GET")
+    path = event.get("path", "/")
+    params = event.get("queryStringParameters") or {}
+
+    if method == "GET" and "album_id" in params:
+        return get_tracks(int(params["album_id"]))
 
     if method == "GET":
         return get_albums()
-    elif method == "POST":
+
+    if method == "POST":
         body = json.loads(event.get("body") or "{}")
+        if "/tracks" in path:
+            return create_track(body)
         return create_album(body)
 
     return {"statusCode": 405, "headers": CORS, "body": json.dumps({"error": "Method not allowed"})}
@@ -49,19 +61,28 @@ def get_albums():
 
     albums = [
         {
-            "id": r[0],
-            "title": r[1],
-            "artist": r[2],
-            "genre": r[3],
-            "year": r[4],
-            "tracks": r[5],
-            "cover_url": r[6],
+            "id": r[0], "title": r[1], "artist": r[2], "genre": r[3],
+            "year": r[4], "tracks": r[5], "cover_url": r[6],
             "created_at": r[7].isoformat() if r[7] else None,
         }
         for r in rows
     ]
-
     return {"statusCode": 200, "headers": CORS, "body": json.dumps({"albums": albums})}
+
+
+def get_tracks(album_id: int):
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        f"SELECT id, title, duration, position FROM {SCHEMA}.tracks WHERE album_id = %s ORDER BY position ASC",
+        (album_id,)
+    )
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    tracks = [{"id": r[0], "title": r[1], "duration": r[2], "position": r[3]} for r in rows]
+    return {"statusCode": 200, "headers": CORS, "body": json.dumps({"tracks": tracks})}
 
 
 def create_album(body: dict):
@@ -77,7 +98,6 @@ def create_album(body: dict):
         return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Заполните все обязательные поля"})}
 
     cover_url = None
-
     if cover_data:
         s3 = boto3.client(
             "s3",
@@ -102,8 +122,38 @@ def create_album(body: dict):
     cur.close()
     conn.close()
 
-    return {
-        "statusCode": 201,
-        "headers": CORS,
-        "body": json.dumps({"id": new_id, "cover_url": cover_url, "message": "Альбом добавлен"}),
-    }
+    return {"statusCode": 201, "headers": CORS, "body": json.dumps({"id": new_id, "cover_url": cover_url})}
+
+
+def create_track(body: dict):
+    album_id = body.get("album_id")
+    title = (body.get("title") or "").strip()
+    duration = (body.get("duration") or "").strip() or None
+
+    if not album_id or not title:
+        return {"statusCode": 400, "headers": CORS, "body": json.dumps({"error": "Укажите album_id и название трека"})}
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute(
+        f"SELECT COALESCE(MAX(position), 0) + 1 FROM {SCHEMA}.tracks WHERE album_id = %s",
+        (album_id,)
+    )
+    position = cur.fetchone()[0]
+
+    cur.execute(
+        f"INSERT INTO {SCHEMA}.tracks (album_id, title, duration, position) VALUES (%s, %s, %s, %s) RETURNING id",
+        (album_id, title, duration, position)
+    )
+    new_id = cur.fetchone()[0]
+
+    cur.execute(
+        f"UPDATE {SCHEMA}.albums SET tracks = (SELECT COUNT(*) FROM {SCHEMA}.tracks WHERE album_id = %s) WHERE id = %s",
+        (album_id, album_id)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {"statusCode": 201, "headers": CORS, "body": json.dumps({"id": new_id, "position": position})}

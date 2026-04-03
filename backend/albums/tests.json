@@ -7,6 +7,14 @@
       "expectedStatus": 200,
       "expectedBody": {"albums": []},
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "GET tracks for album",
+      "method": "GET",
+      "path": "/?album_id=999",
+      "expectedStatus": 200,
+      "expectedBody": {"tracks": []},
+      "bodyMatcher": "partial"
     }
   ]
 }
